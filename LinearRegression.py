@@ -93,7 +93,7 @@ class LinearRegression():
         plt.xlabel('Number of training examples')
         plt.ylabel('Error')
         plt.grid(True)
-        plt.show()
+        # plt.show()
 
     def plotPolyLearningCurve(self, X, y, Xval, yval, d, mylambda):
 
@@ -120,7 +120,7 @@ class LinearRegression():
         plt.ylabel('Error')
         plt.ylim([0, 100])
         plt.grid(True)
-        plt.show()
+        # plt.show()
 
     def genPolyFeatures(self, myX, p):
         """
@@ -170,8 +170,9 @@ class LinearRegression():
         xmat[:, 1:] = xmat[:, 1:] - means[1:]
         xmat[:, 1:] = xmat[:, 1:] / stds[1:]
         self.plotData(X, y)
+        plt.title('plot Fit')
         plt.plot(xvals, self.h(fit_theta, xmat), 'b--')
-        plt.show()
+        # plt.show()
 
     def errorWithLambda(self, X, y, Xval, yval, global_d, start, end, number):
         lambdas = np.linspace(start, end, number)
@@ -196,7 +197,7 @@ class LinearRegression():
         plt.xlabel('lambda')
         plt.ylabel('Error')
         plt.grid(True)
-        plt.show()
+        # plt.show()
 
     def traingLinearRegression(self, X, y, Xval, yval, d, mylambda=1.):
         newX = self.genPolyFeatures(X, d)
@@ -208,6 +209,7 @@ class LinearRegression():
 
         lambdas, errors_train, errors_val = self.errorWithLambda(X, y, Xval, yval, d, 0, 5, 20)
         self.plotErrorWithLambda(lambdas, errors_train, errors_val)
+        plt.show()
 
 
 
@@ -229,9 +231,9 @@ if __name__ == '__main__':
     # LR.plotData(X,y)
 
     global_d = 5
-    mylambda = 1.0
+    mylambda = 1.
 
-    LR.traingLinearRegression(X, y, Xval, yval, 5, mylambda=mylambda)
+    LR.traingLinearRegression(X, y, Xval, yval, global_d, mylambda=mylambda)
     newX = LR.genPolyFeatures(X, global_d)
     newX_norm, stored_means, stored_stds = LR.featureNormalize(newX)
     mytheta = np.ones((newX_norm.shape[1], 1))

@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-from scipy.special import expit #Vectorized sigmoid function
 from scipy import optimize
+import pandas as pd
+import scipy.io #Used to load the OCTAVE *.mat files
+import scipy.misc #Used to show matrix as an image
+import matplotlib.cm as cm #Used to display images in a specific colormap
+import random #To pick random images to display
+from scipy.special import expit #Vectorized sigmoid function
 
 class LogisticRegression:
     def __init__(self):
@@ -54,14 +58,67 @@ class LogisticRegression:
         regterm = (mylambda / 2) * np.sum(np.dot(theta[1:].T, theta[1:]))  # Skip theta0
         return float((1. / m) * (np.sum(term1 - term2) + regterm))
 
+    # An alternative to OCTAVE's 'fmincg' we'll use some scipy.optimize function, "fmin_cg"
+    # This is more efficient with large number of parameters.
+    # In the previous homework, I didn't have to compute the cost gradient because
+    # the scipy.optimize function did it for me with some kind of interpolation...
+    # However, fmin_cg needs the gradient handed do it, so I'll implement that here
+    def costGradient(self, mytheta, myX, myy, mylambda=0.):
+        m = myX.shape[0]
+        # Tranpose y here because it makes the units work out in dot products later
+        # (with the way I've written them, anyway)
+        beta = self.h(mytheta, myX) - myy.T  # shape: (5000,5000)
+
+        # regularization skips the first element in theta
+        regterm = mytheta[1:] * (mylambda / m)  # shape: (400,1)
+
+        grad = (1. / m) * np.dot(myX.T, beta)  # shape: (401, 5000)
+        # regularization skips the first element in theta
+        grad[1:] = grad[1:] + regterm
+        return grad  # shape: (401, 5000)
+
     def optimizeTheta(self, mytheta, myX, myy, mylambda=0.):
-        fit_theta, mincost = optimize.fmin(self.computeCost, x0=mytheta, args=(myX, myy, mylambda), maxiter=400, full_output=True)
-        return fit_theta, mincost
+        result = optimize.fmin_cg(self.computeCost, fprime=self.costGradient, x0=mytheta, \
+                                  args=(myX, myy, mylambda), maxiter=50, disp=False, \
+                                  full_output=True)
+        return result[0], result[1]    ## fit_theta, mincost
 
     def optimizeRegularizedTheta(self, mytheta, myX, myy, mylambda=0.):
         result = optimize.minimize(self.computeCost, mytheta, args=(myX, myy, mylambda), method='BFGS',
                                    options={"maxiter": 500, "disp": False})
         return np.array([result.x]), result.fun    ## fit_theta, mincost
+
+    # Note: I spent a LONG time trying to optimize everything. Initially training 10 classes
+    # took about 5 minutes. Now I've got it down to taking ~5 seconds total!
+    def buildTheta(self, X, y, class_count, mylambda=0.):
+        """
+        Function that determines an optimized theta for each class
+        and returns a Theta function where each row corresponds
+        to the learned logistic regression params for one class
+        """
+        initial_theta = np.zeros((X.shape[1], 1)).reshape(-1)
+        Theta = np.zeros((class_count, X.shape[1]))
+        for i in xrange(class_count):
+            iclass = i if i else 10  # class "10" corresponds to handwritten zero
+            print "Optimizing for handwritten number %d..." % i
+            logic_Y = np.array([1 if x == iclass else 0 for x in y])  # .reshape((X.shape[0],1))
+            itheta, imincost = self.optimizeTheta(initial_theta, X, logic_Y, mylambda)
+            Theta[i, :] = itheta
+        print "Done!"
+        return Theta
+
+    def predictOneVsAll(self, myTheta, myrow):
+        """
+        Function that computes a hypothesis for an individual image (row in X)
+        and returns the predicted integer corresponding to the handwritten image
+        """
+        classes = [10] + range(1, 10)
+        hypots = [0] * len(classes)
+        # Compute a hypothesis for each possible outcome
+        # Choose the maximum hypothesis to find result
+        for i in xrange(len(classes)):
+            hypots[i] = self.h(myTheta[i], myrow)
+        return classes[np.argmax(np.array(hypots))]
 
     def plotBoundary(self, mytheta, myX, myy, mylambda=0.):
         """
